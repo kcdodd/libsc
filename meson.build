@@ -219,19 +219,24 @@ np_inc = include_directories(incdir_numpy)
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # set desired compiler options, if available
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-foreach w : compiler_options
-  if cc.has_argument(w)
-    add_global_arguments(w, language : 'c')
-  endif
-endforeach
+# foreach w : compiler_options
+#   if cc.has_argument(w)
+#     add_global_arguments(w, language : 'c')
+#   endif
+# endforeach
 
-foreach w : cc_options
-  if cc.has_argument(w)
-    add_global_arguments(w, language : 'c')
-  endif
-endforeach
+# foreach w : cc_options
+#   if cc.has_argument(w)
+#     add_global_arguments(w, language : 'c')
+#   endif
+# endforeach
 
 sc_inc = include_directories('src')
+
+iniparser_inc = include_directories('iniparser')
+libb64_inc = include_directories('libb64')
+
+sc_inc = [sc_inc, iniparser_inc, libb64_inc]
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # configure files
@@ -243,4 +248,12 @@ build_number_file = configure_file(
   configuration : {
     'buildnumber' : build_number })
 
+
+subdir('iniparser')
+subdir('libb64')
 subdir('src')
+
+sc_shared_dep = declare_dependency(
+  include_directories : sc_inc,
+  link_with : sc_shared_lib )
+  

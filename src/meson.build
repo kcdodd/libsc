@@ -63,7 +63,7 @@ sc_shared_lib = shared_library(
   # NOTE: the 'public' library, and what is linked with the python warappers
   'sc',
   sc_lib_sources,
-  dependencies : m_deps + mpi_deps,
+  dependencies : m_deps + mpi_deps + iniparser_dep + libb64_dep,
   include_directories : sc_inc,
   c_args : c_args,
   link_args : link_args,

@@ -156,6 +156,15 @@ extern int          sc_trace_prio;
 /** Define 1000 times the machine epsilon for the double type. */
 #define SC_1000_EPS (1000. * 2.220446049250313e-16)
 
+// handle cases where match constants not defined by compiler
+#ifndef M_PI
+  #define M_PI 3.14159265358979323846
+  #define M_PI_2 1.57079632679489661923   
+  #define M_PI_4 0.785398163397448309616  
+  #define M_1_PI 0.318309886183790671538 
+  #define M_2_PI 0.636619772367581343076  
+#endif
+
 /* check macros, always enabled */
 
 /** A macro to do and return nothing as an expression. */
