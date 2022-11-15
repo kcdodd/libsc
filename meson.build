@@ -204,7 +204,7 @@ incdir_py3 = run_command(py3,
   check: true ).stdout().strip()
 
 message('Python includes: ' + incdir_py3)
-inc_py3 = include_directories(incdir_py3)
+py3_inc = include_directories(incdir_py3)
 
 # NumPy include directory
 incdir_numpy = run_command(py3,
@@ -213,7 +213,7 @@ incdir_numpy = run_command(py3,
   check: true ).stdout().strip()
 
 message('NumPy includes: ' + incdir_numpy)
-inc_np = include_directories(incdir_numpy)
+np_inc = include_directories(incdir_numpy)
 
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
