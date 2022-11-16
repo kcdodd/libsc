@@ -256,4 +256,3 @@ subdir('src')
 sc_shared_dep = declare_dependency(
   include_directories : sc_inc,
   link_with : sc_shared_lib )
-  
