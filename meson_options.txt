@@ -1,0 +1,11 @@
+option(
+  'mpi',
+  type : 'feature',
+  value : 'auto',
+  description : 'Build with support for MPI multi-processing' )
+
+option(
+  'zlib',
+  type : 'feature',
+  value : 'auto',
+  description : 'Build with support for zlib vectorization' )

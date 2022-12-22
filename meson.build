@@ -12,6 +12,8 @@ project( 'sc',
 
 cc = meson.get_compiler('c')
 
+mpi_enabled = true
+
 compiler_options = [
   '-Wno-unknown-warning-option',
   '-Wno-unused-variable',
@@ -40,14 +42,6 @@ pkgconfig = import('pkgconfig')
 py_mod = import('python')
 py3 = py_mod.find_installation('python3', required: true)
 
-py3_dep = py3.dependency( required: true )
-
-message('Python: ' + py3.language_version())
-
-if not py3.language_version().version_compare('>= 3.6')
-  error('Python 3.6 or newer is required')
-endif
-
 # use the console command:
 #  date "+%s" to obtain the build number
 build_number = run_command(py3,
@@ -55,40 +49,76 @@ build_number = run_command(py3,
     'import time; print(str(int(time.time())))' ],
   check: true ).stdout().strip()
 
+sc_config = {
+  'PROJECT_VERSION' : meson.project_version(),
+  'PROJECT_MAJOR' : meson.project_version().split('.')[0],
+  'PROJECT_MINOR' : meson.project_version().split('.')[1],
+  'PROJECT_PATCH' : meson.project_version().split('.')[2],
+  'SC_CC' : '"' + cc.get_id() + '-' + cc.version() + '"',
+  'SC_CFLAGS' : '""',
+  'SC_FFLAGS' : '""',
+  'SC_CPP' : '""',
+  'SC_CPPFLAGS' : '""',
+  'SC_LDFLAGS' : '""',
+  'SC_LIBS' : '""' }
+
 check_functions = {
-  'adler32_combine' : 'SC_HAVE_ZLIB',
-  'aligned_alloc' : 'SC_HAVE_ALIGNED_ALLOC',
-  'posix_memalign' : 'SC_HAVE_POSIX_MEMALIGN',
-  'backtrace' : 'SC_HAVE_BACKTRACE',
-  'backtrace_symbols' : 'SC_HAVE_BACKTRACE_SYMBOLS',
-  'fsync' : 'SC_HAVE_FSYNC',
-  'qsort_r' : 'SC_HAVE_QSORT_R',
-  'strtol' : 'SC_HAVE_STRTOL' }
+  # 'SC_HAVE_ZLIB' : 'adler32_combine',
+  'SC_HAVE_ALIGNED_ALLOC' : 'aligned_alloc',
+  'SC_HAVE_POSIX_MEMALIGN' : 'posix_memalign',
+  'SC_HAVE_BACKTRACE' : 'backtrace',
+  'SC_HAVE_BACKTRACE_SYMBOLS' : 'backtrace_symbols',
+  'SC_HAVE_FSYNC' : 'fsync',
+  'SC_HAVE_QSORT_R' : 'qsort_r',
+  'SC_HAVE_STRTOL' : 'strtol',
+  'SC_HAVE_STRTOLL' : 'strtoll',
+  'SC_HAVE_FABS' : 'fabs' }
 
 # TODO: Why do these all get checked if the code can't compile without them?
 check_headers = {
-  'execinfo.h' : 'SC_HAVE_EXECINFO_H',
-  'fcntl.h' : 'SC_HAVE_FCNTL_H',
-  'signal.h' : 'SC_HAVE_SIGNAL_H',
-  'time.h' : 'SC_HAVE_TIME_H',
-  'unistd.h' : 'SC_HAVE_UNISTD_H',
-  'sys/select.h' : 'SC_HAVE_SYS_SELECT_H',
-  'sys/stat.h' : 'SC_HAVE_SYS_STAT_H',
-  'sys/time.h' : 'SC_HAVE_SYS_TIME_H',
-  'sys/types.h' : 'SC_HAVE_SYS_TYPES_H',
-  'sys/ioctl.h' : 'SC_HAVE_SYS_IOCTL_H',
-  'linux/videodev2.h' : 'SC_HAVE_LINUX_VIDEODEV2_H' }
+  'SC_HAVE_EXECINFO_H' : 'execinfo.h',
+  'SC_HAVE_FCNTL_H' : 'fcntl.h',
+  'SC_HAVE_INTTYPES_H' : 'inttypes.h',
+  'SC_HAVE_LINUX_VERSION_H' : 'linux/version.h',
+  'SC_HAVE_MEMORY_H' : 'memory.h',
+  'SC_HAVE_STDINT_H' : 'stdint.h',
+  'SC_HAVE_STDLIB_H' : 'stdlib.h',
+  'SC_HAVE_LIBGEN_H' : 'libgen.h',
+  'SC_HAVE_SIGNAL_H' : 'signal.h',
+  'SC_HAVE_TIME_H' : 'time.h',
+  'SC_HAVE_STRING_H' : 'string.h',
+  'SC_HAVE_UNISTD_H' : 'unistd.h',
+  'SC_HAVE_SYS_SELECT_H' : 'sys/select.h',
+  'SC_HAVE_SYS_STAT_H' : 'sys/stat.h',
+  'SC_HAVE_SYS_TIME_H' : 'sys/time.h',
+  'SC_HAVE_SYS_TYPES_H' : 'sys/types.h',
+  'SC_HAVE_SYS_IOCTL_H' : 'sys/ioctl.h',
+  'SC_HAVE_LINUX_VIDEODEV2_H' : 'linux/videodev2.h',
+  'SC_HAVE_WINSOCK2_H' : 'Winsock2.h' }
 
-foreach func, macro : check_functions
+check_sizes = {
+  'SC_SIZEOF_INT' : 'int',
+  'SC_SIZEOF_UNSIGNED_INT' : 'unsigned int',
+  'SC_SIZEOF_LONG' : 'long',
+  'SC_SIZEOF_UNSIGNED_LONG' : 'unsigned long',
+  'SC_SIZEOF_LONG_LONG' : 'long long',
+  'SC_SIZEOF_UNSIGNED_LONG_LONG' : 'unsigned long long',
+  'SC_SIZEOF_VOID_P' : 'void*' }
+
+foreach macro, func : check_functions
   if cc.has_function(func)
-    c_args += [ '-D@0@=1'.format(macro) ]
+    sc_config += { macro : 1 }
   endif
 endforeach
 
-foreach header, macro : check_headers
+foreach macro, header : check_headers
   if cc.has_header(header)
-    c_args += [ '-D@0@=1'.format(macro) ]
+    sc_config += { macro : 1 }
   endif
+endforeach
+
+foreach macro, typename : check_sizes
+  sc_config += { macro : cc.sizeof(typename) }
 endforeach
 
 # use aligned malloc (optionally use --enable-memalign=<bytes>)
@@ -129,8 +159,7 @@ endforeach
 # // SC_PROVIDE_GETOPT
 # // SC_PROVIDE_OBSTACK
 
-c_args += [
-  '-DSC_ENABLE_MPI=1' ]
+
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # External library dependencies
@@ -139,6 +168,12 @@ c_args += [
 m_deps = [
   cc.find_library('m', required : false ) ]
 
+zlib_deps = [
+  dependency('Zlib', required : get_option('zlib') ) ]
+
+if zlib_deps[0].found()
+  sc_config += { 'SC_HAVE_ZLIB' : 1 }
+endif
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Check for enabling MPI
@@ -155,10 +190,10 @@ m_deps = [
 
 mpi_deps = [
   cc.find_library('mpi',
-    required : true ) ]
+    required : get_option('mpi') ) ]
 
 mpi_h = cc.has_header('mpi.h',
-  required : true )
+  required : get_option('mpi') )
 
 mpi_cc_code = '''
 #include <mpi.h>
@@ -178,46 +213,15 @@ mpi_run = cc.run(
   dependencies: mpi_deps,
   name : 'MPI program' )
 
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# check/prepare for building the python extension
-# https://mesonbuild.com/Python-module.html
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+mpi_enabled = (
+  not get_option('mpi').disabled()
+  and mpi_h
+  and mpi_deps[0].found()
+  and mpi_run.compiled() and mpi_run.returncode() == 0 )
 
-# ensure mpi4py python package is available
-py3_mpi = py_mod.find_installation(
-  'python3',
-  modules : ['mpi4py'],
-  required: true )
-
-py3_deps = [py3_dep,] + mpi_deps + m_deps
-
-cython = find_program(
-  'cython',
-  required : true )
-
-# disable NumPy deprecated API
-numpy_nodepr_api = '-DNPY_NO_DEPRECATED_API=NPY_1_9_API_VERSION'
-
-c_args += [numpy_nodepr_api]
-
-# Python include directory
-incdir_py3 = run_command(py3,
-  [ '-c',
-    'from sysconfig import get_paths; print(get_paths()["include"])' ],
-  check: true ).stdout().strip()
-
-message('Python includes: ' + incdir_py3)
-py3_inc = include_directories(incdir_py3)
-
-# NumPy include directory
-incdir_numpy = run_command(py3,
-  [ '-c',
-    'import numpy; print(numpy.get_include())' ],
-  check: true ).stdout().strip()
-
-message('NumPy includes: ' + incdir_numpy)
-np_inc = include_directories(incdir_numpy)
-
+if mpi_enabled
+  sc_config += { 'SC_ENABLE_MPI' : 1 }
+endif
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # set desired compiler options, if available
