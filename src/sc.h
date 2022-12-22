@@ -26,7 +26,7 @@
  * Support for process management (memory allocation, logging, etc.)
  */
 
-/** \defgroup sc libsc
+/** \defgroup sc The sc Library
  *
  * The SC Library provides support for parallel scientific applications.
  */
@@ -34,8 +34,12 @@
 #ifndef SC_H
 #define SC_H
 
-/* include the sc_config header first */
+/* we set the GNU feature test macro before including anything */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
+/* include the libsc config header first */
 #include <sc_config.h>
 #ifndef _sc_const
 /** Portable way to work with really old compilers without const. */
@@ -75,6 +79,13 @@
 /* done with memalign macros */
 #endif
 
+/* disable global counters that are not thread-safe (say when using TBB) */
+#ifndef SC_ENABLE_USE_COUNTERS
+#define SC_NOCOUNT_MALLOC
+#define SC_NOCOUNT_REFCOUNT
+#define SC_NOCOUNT_LOGINDENT
+#endif
+
 /* use this in case mpi.h includes stdint.h */
 
 #ifndef __STDC_LIMIT_MACROS
@@ -98,18 +109,78 @@
 
 /* include system headers */
 
+#define _USE_MATH_DEFINES
 #include <math.h>
+#ifndef M_E
+#define M_E 2.71828182845904523536
+#endif
+#ifndef M_LOG2E
+#define M_LOG2E 1.44269504088896340736
+#endif
+#ifndef M_LOG10E
+#define M_LOG10E 0.434294481903251827651
+#endif
+#ifndef M_LN2
+#define M_LN2 0.693147180559945309417
+#endif
+#ifndef M_LN10
+#define M_LN10 2.30258509299404568402
+#endif
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+#ifndef M_PI_2
+#define M_PI_2 1.57079632679489661923
+#endif
+#ifndef M_PI_4
+#define M_PI_4 0.785398163397448309616
+#endif
+#ifndef M_1_PI
+#define M_1_PI 0.318309886183790671538
+#endif
+#ifndef M_2_PI
+#define M_2_PI 0.636619772367581343076
+#endif
+#ifndef M_2_SQRTPI
+#define M_2_SQRTPI 1.12837916709551257390
+#endif
+#ifndef M_SQRT2
+#define M_SQRT2 1.41421356237309504880
+#endif
+#ifndef M_SQRT1_2
+#define M_SQRT1_2 0.707106781186547524401
+#endif
 #include <ctype.h>
 #include <float.h>
+#if defined SC_HAVE_LIBGEN_H && !defined _MSC_VER
 #include <libgen.h>
+#endif
 #include <limits.h>
 #include <stdarg.h>
 #include <stddef.h>
+#ifdef SC_HAVE_STDINT_H
 #include <stdint.h>
+#endif
 #include <stdio.h>
+#ifdef SC_HAVE_STDLIB_H
 #include <stdlib.h>
+#endif
+#ifdef SC_HAVE_STRING_H
 #include <string.h>
+#endif
+#ifdef SC_HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+#ifdef SC_HAVE_UNISTD_H
 #include <unistd.h>
+#elif defined _WIN32
+#include <BaseTsd.h>
+typedef SSIZE_T     ssize_t;
+#endif
+
+/* definitions to allow user code to query the sc library */
+/** Indicate that we do not modify the communicator in sc_init. */
+#define SC_INIT_COMM_CLEAN
 
 /* provide extern C defines */
 
@@ -126,7 +197,7 @@
 #define SC_NOARGS
 #endif
 
-/* this libsc header is always included */
+/* this header is always included */
 #include <sc_mpi.h>
 
 SC_EXTERN_C_BEGIN;
@@ -275,7 +346,7 @@ void                SC_CHECK_ABORTF (int success, const char *fmt, ...)
 #endif
 
 #if (defined __GNUC__) || (defined __PGI) || (defined __IBMC__)
-#define SC_ATTR_ALIGN(n) __attribute__((aligned(n)))
+#define SC_ATTR_ALIGN(n) __attribute__ ((aligned(n)))
 #else
 #define SC_ATTR_ALIGN(n)
 #endif
@@ -311,32 +382,46 @@ void                SC_CHECK_ABORTF (int success, const char *fmt, ...)
 #define SC_LC_GLOBAL      1     /**< log only for master process */
 #define SC_LC_NORMAL      2     /**< log for every process */
 
-/** \defgroup logpriorities log priorities
+/** \defgroup sc_logprios Log Priorities
  *
- * Numbers designating the level of logging output.
+ * The log level is a number designating the priority of a log action.
  *
- * Priorities TRACE to VERBOSE are appropriate when all parallel processes
- * contribute log messages.  INFO and above must not clutter the output of
- * large parallel runs.  STATISTICS can be used for important measurements.
- * PRODUCTION is meant for rudimentary information on the program flow.
- * ESSENTIAL can be used for one-time messages, say at program startup.
+ * Log levels serve both to indicate the priority of a message and as a
+ * filter passed to functions to determine which priorities to log.
+ *
+ * The priorities \ref SC_LP_TRACE to \ref SC_LP_VERBOSE may be used
+ * profusely and are appropriate when all parallel processes contribute
+ * low-priority, informative log messages.
+ *
+ *  \ref SC_LP_INFO and above should not clutter the output of large
+ *  parallel runs.  \ref SC_LP_STATISTICS is suggested for important
+ *  measurements.  \ref SC_LP_PRODUCTION is meant for rudimentary
+ *  information on the program flow.
+ *
+ * \ref SC_LP_ESSENTIAL can be used for one-time messages, say at program
+ * startup to communicate program version or licence information.
+ *
+ * \ref SC_LP_ERROR shall never be used during clean operation.
+ * Thus, it can be used to indicate abnormal behavior of the program
+ * and will not disturb the silent appearance of a clean run.
+ * Recommended for those who generally prefer to see absolutely no output
+ * from the libraries they use.
  *
  * \ingroup sc
- */
-/*@{ \ingroup logpriorities */
-/* log priorities */
-#define SC_LP_DEFAULT   (-1)    /**< this selects the SC default threshold */
-#define SC_LP_ALWAYS      0     /**< this will log everything */
-#define SC_LP_TRACE       1     /**< this will prefix file and line number */
-#define SC_LP_DEBUG       2     /**< any information on the internal state */
-#define SC_LP_VERBOSE     3     /**< information on conditions, decisions */
-#define SC_LP_INFO        4     /**< the main things a function is doing */
-#define SC_LP_STATISTICS  5     /**< important for consistency/performance */
-#define SC_LP_PRODUCTION  6     /**< a few lines for a major api function */
-#define SC_LP_ESSENTIAL   7     /**< this logs a few lines max per program */
-#define SC_LP_ERROR       8     /**< this logs errors only */
-#define SC_LP_SILENT      9     /**< this never logs anything */
-/*@}*/
+ *
+ * @{ */
+#define SC_LP_DEFAULT   (-1)    /**< Selects the SC default threshold. */
+#define SC_LP_ALWAYS      0     /**< Log absolutely everything. */
+#define SC_LP_TRACE       1     /**< Prefix file and line number. */
+#define SC_LP_DEBUG       2     /**< Any information on the internal state. */
+#define SC_LP_VERBOSE     3     /**< Information on conditions, decisions. */
+#define SC_LP_INFO        4     /**< Most relevant things a function is doing. */
+#define SC_LP_STATISTICS  5     /**< Important for consistency/performance. */
+#define SC_LP_PRODUCTION  6     /**< A few lines at most for a major api function. */
+#define SC_LP_ESSENTIAL   7     /**< Log a few lines max per program. */
+#define SC_LP_ERROR       8     /**< Log errors only.  This is suggested over \ref SC_LP_SILENT. */
+#define SC_LP_SILENT      9     /**< Never log anything.  Instead suggesting \ref SC_LP_ERROR. */
+/** @} */
 
 /** The log priority for the sc package.
  *
@@ -478,6 +563,8 @@ typedef void        (*sc_log_handler_t) (FILE * log_stream,
                                          const char *filename, int lineno,
                                          int package, int category,
                                          int priority, const char *msg);
+
+/** Type of the abort handler function. */
 typedef void        (*sc_abort_handler_t) (void);
 
 /* memory allocation functions, will abort if out of memory */
@@ -489,6 +576,9 @@ char               *sc_strdup (int package, const char *s);
 void                sc_free (int package, void *ptr);
 int                 sc_memory_status (int package);
 void                sc_memory_check (int package);
+
+/** Return error count or zero if all is ok. */
+int                 sc_memory_check_noerr (int package);
 
 /* comparison functions for various integer sizes */
 
@@ -521,11 +611,11 @@ long                sc_atol (const char *nptr);
  */
 void                sc_set_log_defaults (FILE * log_stream,
                                          sc_log_handler_t log_handler,
-                                         int log_thresold);
+                                         int log_threshold);
 
-/** Controls the default SC abort behavior.
+/** Set the default SC abort behavior.
  * \param [in] abort_handler Set default SC above handler (NULL selects
- *                           builtin).  ***This function should not return!***
+ *                           builtin).  If it returns, we abort (2) then.
  */
 void                sc_set_abort_handler (sc_abort_handler_t abort_handler);
 
@@ -671,10 +761,21 @@ void                sc_init (sc_MPI_Comm mpicomm,
 
 /** Unregisters all packages, runs the memory check, removes the
  * signal handlers and resets sc_identifier and sc_root_*.
+ * This function aborts on any inconsistency found unless
+ * the global variable default_abort_mismatch is false.
  * This function is optional.
  * This function does not require sc_init to be called first.
  */
 void                sc_finalize (void);
+
+/** Unregisters all packages, runs the memory check, removes the
+ * signal handlers and resets sc_identifier and sc_root_*.
+ * This function never aborts but returns the number of errors encountered.
+ * This function is optional.
+ * This function does not require sc_init to be called first.
+ * \return          0 when everything is consistent, nonzero otherwise.
+ */
+int                 sc_finalize_noabort (void);
 
 /** Identify the root process.
  * Only meaningful between sc_init and sc_finalize and
@@ -687,6 +788,9 @@ int                 sc_is_root (void);
 /** Provide a string copy function.
  * \param [out] dest    Buffer of length at least \a size.
  *                      On output, not touched if NULL or \a size == 0.
+ *                      Otherwise, \a src is copied to \a dest and
+ *                      \a dest is padded with '\0' from the right
+ *                      if strlen (src) < size - 1.
  * \param [in] size     Allocation length of \a dest.
  * \param [in] src      Null-terminated string.
  * \return              Equivalent to \ref
@@ -701,6 +805,9 @@ void                sc_strcopy (char *dest, size_t size, const char *src);
  * \param [out] str     Buffer of length at least \a size.
  *                      On output, not touched if NULL or \a size == 0.
  *                      Otherwise, "" on snprintf error or the proper result.
+ *                      The proper result is padded on the right with '\0'
+ *                      if the allocation length of the string that is
+ *                      defined by \a format is shorter than \a size.
  * \param [in] size     Allocation length of \a str.
  * \param [in] format   Format string as in man (3) snprintf.
  */
@@ -741,6 +848,11 @@ int                 sc_version_minor (void);
  */
 int                 sc_version_point (void);
 #endif /* 0 */
+
+/** Return whether we have found a JSON library at configure time.
+ * \return          True if and only if SC_HAVE_JSON is defined.
+ */
+int                 sc_have_json (void);
 
 SC_EXTERN_C_END;
 

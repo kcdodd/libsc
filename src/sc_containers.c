@@ -143,6 +143,18 @@ sc_array_init_view (sc_array_t * view, sc_array_t * array, size_t offset,
 }
 
 void
+sc_array_init_reshape (sc_array_t * view, sc_array_t * array,
+                       size_t elem_size, size_t elem_count)
+{
+  SC_ASSERT (view != NULL);
+  SC_ASSERT (array != NULL);
+  SC_ASSERT (array->elem_size * array->elem_count == elem_size * elem_count);
+
+  /* create a view with the same memory content but different layout */
+  sc_array_init_data (view, array->array, elem_size, elem_count);
+}
+
+void
 sc_array_init_data (sc_array_t * view, void *base, size_t elem_size,
                     size_t elem_count)
 {
@@ -181,7 +193,7 @@ sc_array_truncate (sc_array_t * array)
 
 #if SC_ENABLE_DEBUG
   SC_ASSERT (array->byte_alloc >= 0);
-  memset (array->array, (char) -1, array->byte_alloc);
+  memset (array->array, -1, array->byte_alloc);
 #endif
 }
 
@@ -246,7 +258,7 @@ sc_array_resize (sc_array_t * array, size_t new_count)
   else {
 #ifdef SC_ENABLE_DEBUG
     if (newoffs < oldoffs) {
-      memset (array->array + newoffs, (char) -1, oldoffs - newoffs);
+      memset (array->array + newoffs, -1, oldoffs - newoffs);
     }
     for (i = oldoffs; i < newoffs; ++i) {
       SC_ASSERT (array->array[i] == (char) -1);
@@ -274,7 +286,7 @@ sc_array_resize (sc_array_t * array, size_t new_count)
 
 #ifdef SC_ENABLE_DEBUG
   SC_ASSERT (minoffs <= newsize);
-  memset (array->array + minoffs, (char) -1, newsize - minoffs);
+  memset (array->array + minoffs, -1, newsize - minoffs);
 #endif
 }
 
@@ -859,33 +871,9 @@ size_t
 sc_mempool_memory_used (sc_mempool_t * mempool)
 {
   return sizeof (sc_mempool_t) +
-#ifdef SC_MEMPOOL_MSTAMP
     sc_mstamp_memory_used (&mempool->mstamp) +
-#else
-    obstack_memory_used (&mempool->obstack) +
-#endif
     sc_array_memory_used (&mempool->freed, 0);
 }
-
-#ifndef SC_MEMPOOL_MSTAMP
-
-static void        *
-sc_containers_malloc (size_t n)
-{
-  return sc_malloc (sc_package_id, n);
-}
-
-static void        *(*obstack_chunk_alloc) (size_t) = sc_containers_malloc;
-
-static void
-sc_containers_free (void *p)
-{
-  sc_free (sc_package_id, p);
-}
-
-static void         (*obstack_chunk_free) (void *) = sc_containers_free;
-
-#endif /* !SC_MEMPOOL_MSTAMP */
 
 /** This function is static; we do not like to expose _ext functions in libsc. */
 static void
@@ -896,11 +884,7 @@ sc_mempool_init_ext (sc_mempool_t * mempool, size_t elem_size,
   mempool->elem_count = 0;
   mempool->zero_and_persist = zero_and_persist;
 
-#ifdef SC_MEMPOOL_MSTAMP
   sc_mstamp_init (&mempool->mstamp, 4096, elem_size);
-#else
-  obstack_init (&mempool->obstack);
-#endif
   sc_array_init (&mempool->freed, sizeof (void *));
 }
 
@@ -917,7 +901,6 @@ sc_mempool_new_ext (size_t elem_size, int zero_and_persist)
   sc_mempool_t       *mempool;
 
   SC_ASSERT (elem_size > 0);
-  SC_ASSERT (elem_size <= (size_t) INT_MAX);    /* obstack limited to int */
 
   mempool = SC_ALLOC (sc_mempool_t, 1);
 
@@ -942,11 +925,7 @@ void
 sc_mempool_reset (sc_mempool_t * mempool)
 {
   sc_array_reset (&mempool->freed);
-#ifdef SC_MEMPOOL_MSTAMP
   sc_mstamp_reset (&mempool->mstamp);
-#else
-  obstack_free (&mempool->obstack, NULL);
-#endif
 }
 
 void
@@ -970,12 +949,7 @@ void
 sc_mempool_truncate (sc_mempool_t * mempool)
 {
   sc_array_reset (&mempool->freed);
-#ifdef SC_MEMPOOL_MSTAMP
   sc_mstamp_truncate (&mempool->mstamp);
-#else
-  obstack_free (&mempool->obstack, NULL);
-  obstack_init (&mempool->obstack);
-#endif
   mempool->elem_count = 0;
 }
 

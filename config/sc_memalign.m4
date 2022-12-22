@@ -24,18 +24,20 @@ AC_CHECK_FUNCS([aligned_alloc posix_memalign])
 dnl custom memory alignment option
 AC_MSG_CHECKING([for memory alignment option])
 SC_ARG_DISABLE_PREFIX([memalign],
-  [use aligned malloc (optionally use --enable-memalign=<bytes>)],
+  [while the default alignment is sizeof (void *),
+   this switch will choose the standard system malloc.
+   For custom alignment use --enable-memalign=<bytes>],
   [MEMALIGN], [$1])
 
 dnl read the value of the configuration argument
 if test "x$$1_ENABLE_MEMALIGN" != xno ; then
   if test "x$$1_ENABLE_MEMALIGN" != xyes ; then
 
-    dnl make sure the alignment is a number 
+    dnl make sure the alignment is a number
     $1_MEMALIGN_BYTES=`echo "$$1_ENABLE_MEMALIGN" | tr -c -d '[[:digit:]]'`
     $1_MEMALIGN_BYTES_LINK="$$1_MEMALIGN_BYTES"
     if test "x$$1_MEMALIGN_BYTES" = x ; then
-      AC_MSG_ERROR([Please provide --enable-memalign with a numeric value or nothing])
+      AC_MSG_ERROR([please provide --enable-memalign with a numeric value or nothing])
     fi
   else
     $1_MEMALIGN_BYTES_LINK="SIZEOF_VOID_P"
@@ -47,12 +49,18 @@ if test "x$$1_ENABLE_MEMALIGN" != xno ; then
 
 dnl verify that aligned_alloc can be linked against
   if test "x$ac_cv_func_aligned_alloc" = xyes ; then
-    AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <stdlib.h>]],
+    AC_LINK_IFELSE([AC_LANG_PROGRAM(
+[[
+#include <stdlib.h>
+#ifdef __cplusplus
+extern "C" void* aligned_alloc(size_t, size_t);
+#endif
+]],
 [[
 int *a = (int *) aligned_alloc ($$1_MEMALIGN_BYTES_LINK, 3 * sizeof(*a));
 free(a);
 ]])],
-                   [], [AC_MSG_ERROR([Linking aligned_alloc failed])])
+                   [], [AC_MSG_ERROR([linking aligned_alloc failed])])
   fi
 
 dnl verify that posix_memalign can be linked against
@@ -67,7 +75,7 @@ int *a;
 posix_memalign((void **) &a, $$1_MEMALIGN_BYTES_LINK, 3 * sizeof(*a));
 free(a);
 ]])],
-                   [], [AC_MSG_ERROR([Linking posix_memalign failed])])
+                   [], [AC_MSG_ERROR([linking posix_memalign failed])])
   fi
 
 dnl the function memalign is obsolete and not used
