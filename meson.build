@@ -14,6 +14,14 @@ cc = meson.get_compiler('c')
 
 mpi_enabled = true
 
+sc_log_priorities = {
+  'trace' : 'SC_LP_TRACE',
+  'debug' : 'SC_LP_DEBUG',
+  'verbose' : 'SC_LP_VERBOSE',
+  'info' : 'SC_LP_INFO',
+  'warning' : 'SC_LP_PRODUCTION',
+  'error' : 'SC_LP_ERROR' }
+
 compiler_options = [
   '-Wno-unknown-warning-option',
   '-Wno-unused-variable',
@@ -29,9 +37,12 @@ compiler_options = [
 
 cc_options = []
 
-# enable POSIX features
+
 c_args = [
-  '-D_POSIX_C_SOURCE=200809L' ]
+  # enable POSIX features
+  '-D_POSIX_C_SOURCE=200809L',
+  # set compile-time logging level
+  '-DSC_LOG_PRIORITY=@0@'.format(sc_log_priorities[get_option('log_priority')]) ]
 
 link_args = []
 

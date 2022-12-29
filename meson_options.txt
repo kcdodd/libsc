@@ -9,3 +9,9 @@ option(
   type : 'feature',
   value : 'auto',
   description : 'Build with support for zlib vectorization' )
+
+option(
+  'log_priority',
+  type : 'combo',
+  choices : ['trace', 'debug', 'verbose', 'info', 'warning', 'error'],
+  value : 'info')
