@@ -41,6 +41,8 @@ cc_options = []
 c_args = [
   # enable POSIX features
   '-D_POSIX_C_SOURCE=200809L',
+  # enable darwin extensions
+  '-D_DARWIN_C_SOURCE=1',
   # set compile-time logging level
   '-DSC_LOG_PRIORITY=@0@'.format(sc_log_priorities[get_option('log_priority')]) ]
 
