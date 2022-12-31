@@ -73,18 +73,6 @@ sc_config = {
   'SC_LDFLAGS' : '""',
   'SC_LIBS' : '""' }
 
-check_functions = {
-  # 'SC_HAVE_ZLIB' : 'adler32_combine',
-  'SC_HAVE_ALIGNED_ALLOC' : 'aligned_alloc',
-  'SC_HAVE_POSIX_MEMALIGN' : 'posix_memalign',
-  'SC_HAVE_BACKTRACE' : 'backtrace',
-  'SC_HAVE_BACKTRACE_SYMBOLS' : 'backtrace_symbols',
-  'SC_HAVE_FSYNC' : 'fsync',
-  'SC_HAVE_QSORT_R' : 'qsort_r',
-  'SC_HAVE_STRTOL' : 'strtol',
-  'SC_HAVE_STRTOLL' : 'strtoll',
-  'SC_HAVE_FABS' : 'fabs' }
-
 # TODO: Why do these all get checked if the code can't compile without them?
 check_headers = {
   'SC_HAVE_EXECINFO_H' : 'execinfo.h',
@@ -107,6 +95,18 @@ check_headers = {
   'SC_HAVE_LINUX_VIDEODEV2_H' : 'linux/videodev2.h',
   'SC_HAVE_WINSOCK2_H' : 'Winsock2.h' }
 
+check_functions = {
+  # 'SC_HAVE_ZLIB' : 'adler32_combine',
+  'SC_HAVE_ALIGNED_ALLOC' : 'aligned_alloc',
+  'SC_HAVE_POSIX_MEMALIGN' : 'posix_memalign',
+  'SC_HAVE_BACKTRACE' : 'backtrace',
+  'SC_HAVE_BACKTRACE_SYMBOLS' : 'backtrace_symbols',
+  'SC_HAVE_FSYNC' : 'fsync',
+  'SC_HAVE_QSORT_R' : 'qsort_r',
+  'SC_HAVE_STRTOL' : 'strtol',
+  'SC_HAVE_STRTOLL' : 'strtoll',
+  'SC_HAVE_FABS' : 'fabs' }
+
 check_sizes = {
   'SC_SIZEOF_INT' : 'int',
   'SC_SIZEOF_UNSIGNED_INT' : 'unsigned int',
@@ -116,14 +116,24 @@ check_sizes = {
   'SC_SIZEOF_UNSIGNED_LONG_LONG' : 'unsigned long long',
   'SC_SIZEOF_VOID_P' : 'void*' }
 
+check_links = {
+  'SC_HAVE_GNU_QSORT_R' : '#include <stdlib.h>\nextern void qsort_r(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *, void *), void *arg);',
+  'SC_HAVE_BSD_QSORT_R' : '#include <stdlib.h>\nextern void qsort_r(void *base, size_t nmemb, size_t size, void *thunk, int (*compar)(void *, const void *, const void *));' }
+
+foreach macro, header : check_headers
+  if cc.has_header(header)
+    sc_config += { macro : 1 }
+  endif
+endforeach
+
 foreach macro, func : check_functions
   if cc.has_function(func)
     sc_config += { macro : 1 }
   endif
 endforeach
 
-foreach macro, header : check_headers
-  if cc.has_header(header)
+foreach macro, code : check_links
+  if cc.links('@0@\nint main(void) { return 0; }'.format(code), name : macro)
     sc_config += { macro : 1 }
   endif
 endforeach
