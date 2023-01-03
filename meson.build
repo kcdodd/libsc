@@ -15,12 +15,13 @@ cc = meson.get_compiler('c')
 mpi_enabled = true
 
 sc_log_priorities = {
-  'trace' : 'SC_LP_TRACE',
-  'debug' : 'SC_LP_DEBUG',
-  'verbose' : 'SC_LP_VERBOSE',
-  'info' : 'SC_LP_INFO',
-  'warning' : 'SC_LP_PRODUCTION',
-  'error' : 'SC_LP_ERROR' }
+  'all'     : '0',
+  'trace'   : '1',
+  'debug'   : '2',
+  'verbose' : '3',
+  'info'    : '4',
+  'warning' : '6',
+  'error'   : '8' }
 
 compiler_options = [
   '-Wno-unknown-warning-option',

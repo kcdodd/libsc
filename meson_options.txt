@@ -2,16 +2,20 @@ option(
   'mpi',
   type : 'feature',
   value : 'auto',
+  # yield to option value of the superproject, if any
+  yield : true,
   description : 'Build with support for MPI multi-processing' )
 
 option(
   'zlib',
   type : 'feature',
   value : 'auto',
+  yield : true,
   description : 'Build with support for zlib vectorization' )
 
 option(
   'log_priority',
   type : 'combo',
+  yield : true,
   choices : ['trace', 'debug', 'verbose', 'info', 'warning', 'error'],
   value : 'info')
